@@ -52,12 +52,12 @@ jobs:
 
     steps:
     - name: Github Migrations Backup
-      uses: TCARE1/github-backup-action@0.9.0
+      uses: TCARE/github-backup-action@0.9.0
       with:
         github-organization: "your-organization-here"
         github-apikey: ${}
+        azure-container-name: "your-container-here"
         azure-connection-string: ${AZURE_CONNECTION_STRING} # Github Secret is advised
-        azure-container-name: ${AZURE_CONTAINER_NAME} # Github Secret is advised
 
     # Save migration.data.id as an artifact at the end of the first run
     - name: Archive Data
@@ -97,12 +97,17 @@ jobs:
         download-migration: true
         github-organization: "your-organization-here"
         github-apikey: ${}
+        azure-container-name: "your-container-here"
         azure-connection-string: ${AZURE_CONNECTION_STRING} # Github Secret is advised
-        azure-container-name: ${AZURE_CONTAINER_NAME} # Github Secret is advised
+
+
+# Azure policy?
+
+```json
+{
+  "TBD":"TBD
+}
 ```
-
-# Azure Storage policy?
-
 
 # Recovering your repositories from the archive
 
