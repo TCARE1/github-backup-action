@@ -2,8 +2,7 @@
 import {checkEnv} from '../src/check'
 import {sleep} from '../src/sleep'
 import {Octokit} from '@octokit/core'
-import {Upload} from '@aws-sdk/lib-storage'
-import * as AWS_S3 from '@aws-sdk/client-s3'
+import { BlobServiceClient } from '@azure/storage-blob';
 import axios from 'axios'
 import 'dotenv/config'
 import {
@@ -26,28 +25,18 @@ const octokit = new Octokit({
             : (process.env.GH_API_KEY as string)
 })
 
-// All the AWS variables
-const {S3} = AWS_S3
-const bucketName: string =
+
+// All the Azure variables
+const connectionString: string =
     process.env.GITHUB_ACTIONS && !process.env.CI
-        ? getInput('aws-bucket-name', {required: true})
-        : (process.env.AWS_BUCKET_NAME as string)
-const s3 = new S3({
-    region:
-        process.env.GITHUB_ACTIONS && !process.env.CI
-            ? getInput('aws-bucket-region', {required: true})
-            : (process.env.AWS_BUCKET_REGION as string),
-    credentials: {
-        accessKeyId:
-            process.env.GITHUB_ACTIONS && !process.env.CI
-                ? getInput('aws-access-key', {required: true})
-                : (process.env.AWS_ACCESS_KEY as string),
-        secretAccessKey:
-            process.env.GITHUB_ACTIONS && !process.env.CI
-                ? getInput('aws-secret-key', {required: true})
-                : (process.env.AWS_SECRET_KEY as string)
-    }
-})
+        ? getInput('azure-connection-string', {required: true})
+        : (process.env.AZURE_CONNECTION_STRING as string)
+const containerName: string =
+    process.env.GITHUB_ACTIONS && !process.env.CI
+        ? getInput('azure-container-name', {required: true})
+        : (process.env.AZURE_CONTAINER_NAME as string)
+const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+
 
 // All the script variables
 const downloadMigration =
@@ -233,26 +222,27 @@ async function runDownload(organization: string): Promise<void> {
             }
         }
 
-        // Function for uploading archive to our own S3 Bucket
+        // Function for uploading archive to Azure Storage
         async function uploadArchive(filename: string): Promise<unknown> {
             try {
-                console.log('Uploading archive to our own S3 bucket...\n')
+                console.log('Uploading archive to Azure Storage...\n')
                 const fileStream = createReadStream(filename)
-                const uploadParams: AWS_S3.PutObjectCommandInput = {
-                    Bucket: bucketName,
-                    Body: fileStream,
-                    Key: filename
-                }
 
-                // this will upload the archive to S3
-                return new Upload({
-                    client: s3,
-                    params: uploadParams
-                }).done()
+                // Get a reference to a blob
+                const containerClient = blobServiceClient.getContainerClient(containerName);
+                const blockBlobClient = containerClient.getBlockBlobClient(filename);
+
+                // Upload data to the blob
+                const uploadBlobResponse = await blockBlobClient.uploadStream(fileStream);
+                console.log(`Upload block blob ${filename} successfully`, uploadBlobResponse.requestId);
+
+                return uploadBlobResponse;
             } catch (error) {
                 console.error('Error occurred while uploading the file:', error)
             }
         }
+
+
         // Function for deleting archive from Github
         async function deleteArchive(
             organization: string,

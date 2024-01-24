@@ -3,10 +3,8 @@ export function checkEnv(): void {
     const requiredVariables = [
         'GH_ORG',
         'GH_API_KEY',
-        'AWS_BUCKET_NAME',
-        'AWS_BUCKET_REGION',
-        'AWS_ACCESS_KEY',
-        'AWS_SECRET_KEY'
+        'AZURE_CONNECTION_STRING',
+        'AZURE_CONTAINER_NAME'
     ]
 
     for (const variable of requiredVariables) {

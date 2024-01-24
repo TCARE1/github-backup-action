@@ -16,7 +16,7 @@
 
 # About
 
-This GitHub Action allows you to backup and archive a organization repository to an S3 Bucket with the help of the [GitHub Organization migrations API](https://docs.github.com/en/rest/migrations/orgs#start-an-organization-migration)
+This GitHub Action allows you to backup and archive a organization repository to an Azure Storage Account with the help of the [GitHub Organization migrations API](https://docs.github.com/en/rest/migrations/orgs#start-an-organization-migration)
 
 # Requirements
 
@@ -52,14 +52,12 @@ jobs:
 
     steps:
     - name: Github Migrations Backup
-      uses: skrepr/github-backup-action@2.0.0
+      uses: TCARE1/github-backup-action@0.9.0
       with:
         github-organization: "your-organization-here"
         github-apikey: ${}
-        aws-bucket-name: "your-bucket-here"
-        aws-bucket-region: "your-bucket-region-here"
-        aws-access-key: ${AWS_ACCESS_KEY} # Github Secret is advised
-        aws-secret-key: ${AWS_SECRET_KEY} # Github Secret is advised
+        azure-connection-string: ${AZURE_CONNECTION_STRING} # Github Secret is advised
+        azure-container-name: ${AZURE_CONTAINER_NAME} # Github Secret is advised
 
     # Save migration.data.id as an artifact at the end of the first run
     - name: Archive Data
@@ -94,45 +92,17 @@ jobs:
         path: migration_response.json
 
     - name: Github Migrations Backup
-      uses: skrepr/github-backup-action@2.0.0
+      uses: TCARE1/github-backup-action@0.9.0
       with:
         download-migration: true
         github-organization: "your-organization-here"
         github-apikey: ${}
-        aws-bucket-name: "your-bucket-here"
-        aws-bucket-region: "your-bucket-region-here"
-        aws-access-key: ${AWS_ACCESS_KEY} # Github Secret is advised
-        aws-secret-key: ${AWS_SECRET_KEY} # Github Secret is advised
+        azure-connection-string: ${AZURE_CONNECTION_STRING} # Github Secret is advised
+        azure-container-name: ${AZURE_CONTAINER_NAME} # Github Secret is advised
 ```
 
-# AWS policy for S3 bucket user
+# Azure Storage policy?
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:ListBucket"
-            ],
-            "Resource": [
-                "arn:aws:s3:::your-bucket-here"
-            ]
-        },
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:PutObject",
-                "s3:GetObject"
-            ],
-            "Resource": [
-                "arn:aws:s3:::your-bucket-here/*"
-            ]
-        }
-    ]
-}
-```
 
 # Recovering your repositories from the archive
 
