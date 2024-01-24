@@ -1,6 +1,6 @@
 {
   "name": "github-backup-action",
-  "version": "2.0.1",
+  "version": "0.9.0",
   "description": "Github action for backing up Github orgs with migrations",
   "main": "index.js",
   "scripts": {
@@ -27,14 +27,11 @@
   "dependencies": {
     "@actions/core": "^1.10.0",
     "@actions/github": "^6.0.0",
-    "@aws-sdk/client-s3": "^3.386.0",
-    "@aws-sdk/lib-storage": "^3.386.0",
+    "@azure/storage-blob": "^12.17.0",
     "@octokit/core": "^5.0.2",
     "@types/node": "^20.8.10",
-    "aws-sdk": "^2.1485.0",
     "axios": "^1.6.2",
     "dotenv": "^16.0.2",
-    "esbuild": "^0.19.5",
     "eslint-plugin-github": "^4.10.1",
     "fs": "^0.0.1-security",
     "jest": "^28.1.1",
@@ -43,6 +40,7 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.3",
+    "esbuild": "0.19.12",
     "eslint": "^8.54.0",
     "eslint-plugin-jest": "^27.6.0",
     "prettier": "3.0.1"

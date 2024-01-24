@@ -11,24 +11,15 @@ inputs:
   GH_REPO:
     description: 'The GitHub repo you want to backup'
     required: true
-  AWS_BUCKET_NAME:
-    description: 'The S3 bucket in which the archive will be stored'
+  AZURE_CONTAINER_NAME:
+    description: 'The Azure Container in which the archive will be stored'
     required: true
-  AWS_BUCKET_REGION:
-    description: 'The region in which the S3 bucket is located'
-    required: true
-  AWS_ARN:
-    description: 'The AWS ARN of the S3 bucket'
-    required: true
-  AWS_ACCESS_KEY:
-    description: 'The Access Key needed to authenticate to AWS'
-    required: true
-  AWS_SECRET_KEY:
-    description: 'The Secret Key needed to complete authentication to AWS'
+  AZURE_CONNECTION_STRING:
+    description: 'The Connection String (including key) needed to complete authentication to Azure'
     required: true
 runs:
   using: 'node20'
   main: 'dist/index.js'
 branding:
-  icon: 'upload-cloud'  
+  icon: 'upload-cloud'
   color: 'orange'

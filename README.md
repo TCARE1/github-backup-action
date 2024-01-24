@@ -99,7 +99,7 @@ jobs:
         github-apikey: ${}
         azure-container-name: "your-container-here"
         azure-connection-string: ${AZURE_CONNECTION_STRING} # Github Secret is advised
-```
+
 
 # Azure policy?
 

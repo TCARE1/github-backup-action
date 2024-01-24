@@ -27,10 +27,8 @@ describe('checkEnv', () => {
         process.env = {
             GH_ORG: 'myorg',
             GH_API_KEY: 'apikey',
-            AWS_BUCKET_NAME: 'bucket',
-            AWS_BUCKET_REGION: 'region',
-            AWS_ACCESS_KEY: 'accesskey',
-            AWS_SECRET_KEY: 'secretkey'
+            AZURE_CONTAINER_NAME: 'containername',
+            AZURE_CONNECTION_STRING: 'azure-connection-string'
         }
 
         expect(() => {
