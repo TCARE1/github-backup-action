@@ -74640,8 +74640,8 @@ var octokit = new import_core.Octokit({
 var containerName = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-container-name", { required: true }) : process.env.AZURE_CONTAINER_NAME;
 var connectionString = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-connection-string", { required: true }) : process.env.AZURE_CONNECTION_STRING;
 var blobServiceClient = import_storage_blob.BlobServiceClient.fromConnectionString(connectionString);
-var transferMigration = (0, import_core2.getInput)("transfer-migration", { required: false }) || process.env.TRANSFER_MIGRATION === "true";
-var purgeMigration = (0, import_core2.getInput)("purge-migration", { required: false }) || process.env.PURGE_MIGRATION === "true";
+var transferMigration = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("transfer-migration", { required: false })?.toLowerCase?.() === "true" : process.env.TRANSFER_MIGRATION === "true";
+var purgeMigration = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("purge-migration", { required: false })?.toLowerCase?.() === "true" : process.env.PURGE_MIGRATION === "true";
 async function getOrgRepoNames(organization) {
   try {
     console.log(`
@@ -74832,10 +74832,11 @@ async function runBackupToStorage(organization) {
 if (!process.env.GITHUB_ACTIONS) {
   checkEnv();
 }
-if (transferMigration) {
-  runBackupToStorage(githubOrganization);
-} else {
+console.log(`Running with mode transfer = ${transferMigration}...`);
+if (!transferMigration) {
   runGitHubMigration(githubOrganization);
+} else {
+  runBackupToStorage(githubOrganization);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

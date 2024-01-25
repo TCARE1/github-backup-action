@@ -35,12 +35,12 @@ const blobServiceClient =
     BlobServiceClient.fromConnectionString(connectionString)
 
 // All the script variables
-const transferMigration =
-    getInput('transfer-migration', {required: false}) ||
-    process.env.TRANSFER_MIGRATION === 'true'
-const purgeMigration =
-    getInput('purge-migration', {required: false}) ||
-    process.env.PURGE_MIGRATION === 'true'
+const transferMigration = process.env.GITHUB_ACTIONS
+    ? getInput('transfer-migration', {required: false})?.toLowerCase?.() === 'true'
+    : process.env.TRANSFER_MIGRATION === 'true'
+const purgeMigration = process.env.GITHUB_ACTIONS
+    ? getInput('purge-migration', {required: false})?.toLowerCase?.() === 'true'
+    : process.env.PURGE_MIGRATION === 'true'
 
 export async function getOrgRepoNames(organization: string): Promise<string[]> {
     try {
@@ -287,10 +287,11 @@ if (!process.env.GITHUB_ACTIONS) {
     checkEnv()
 }
 
-if (transferMigration) {
-    // Step 2. Transfer the migration created in step 1.
-    runBackupToStorage(githubOrganization)
-} else {
+console.log(`Running with mode transfer = ${transferMigration}...`)
+if (!transferMigration) {
     // Step 1. Create a migration in the organization.
     runGitHubMigration(githubOrganization)
+} else {
+    // Step 2. Transfer the migration created in step 1.
+    runBackupToStorage(githubOrganization)
 }
