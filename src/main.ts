@@ -287,8 +287,10 @@ if (!process.env.GITHUB_ACTIONS) {
     checkEnv()
 }
 
-runGitHubMigration(githubOrganization)
-if (transferMigration) {
-    // Start the download script when transferMigration is true
+if (!transferMigration) {
+    // Step 1. Create a migration in the organization.
+    runGitHubMigration(githubOrganization)
+} else {
+    // Step 2. Transfer the migration created in step 1.
     runBackupToStorage(githubOrganization)
 }
