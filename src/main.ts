@@ -14,26 +14,22 @@ import {
 import {getInput} from '@actions/core'
 
 // All the GitHub variables
-const githubOrganization: string =
-    process.env.GITHUB_ACTIONS && !process.env.CI
-        ? getInput('github-organization', {required: true})
-        : (process.env.GH_ORG as string)
+const githubOrganization: string = process.env.GITHUB_ACTIONS
+    ? getInput('github-organization', {required: true})
+    : (process.env.GH_ORG as string)
 const octokit = new Octokit({
-    auth:
-        process.env.GITHUB_ACTIONS && !process.env.CI
-            ? getInput('github-api-key')
-            : (process.env.GH_API_KEY as string)
+    auth: process.env.GITHUB_ACTIONS
+        ? getInput('github-api-key')
+        : (process.env.GH_API_KEY as string)
 })
 
 // All the Azure variables
-const containerName: string =
-    process.env.GITHUB_ACTIONS && !process.env.CI
-        ? getInput('azure-container-name', {required: true})
-        : (process.env.AZURE_CONTAINER_NAME as string)
-const connectionString: string =
-    process.env.GITHUB_ACTIONS && !process.env.CI
-        ? getInput('azure-connection-string', {required: true})
-        : (process.env.AZURE_CONNECTION_STRING as string)
+const containerName: string = process.env.GITHUB_ACTIONS
+    ? getInput('azure-container-name', {required: true})
+    : (process.env.AZURE_CONTAINER_NAME as string)
+const connectionString: string = process.env.GITHUB_ACTIONS
+    ? getInput('azure-connection-string', {required: true})
+    : (process.env.AZURE_CONNECTION_STRING as string)
 
 const blobServiceClient =
     BlobServiceClient.fromConnectionString(connectionString)
