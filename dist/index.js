@@ -74779,7 +74779,10 @@ async function runDownload(organization) {
     }
     async function uploadArchive(filename) {
       try {
-        console.log("Uploading archive to Azure Storage...\n");
+        console.log(
+          `Uploading archive to Azure Storage (${containerName})...
+`
+        );
         const fileStream = (0, import_fs.createReadStream)(filename);
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const blockBlobClient = containerClient.getBlockBlobClient(filename);
@@ -74787,7 +74790,7 @@ async function runDownload(organization) {
           fileStream
         );
         console.log(
-          `Upload block blob ${filename} successfully`,
+          `Uploaded block blob ${filename} successfully`,
           uploadBlobResponse.requestId
         );
         return uploadBlobResponse;

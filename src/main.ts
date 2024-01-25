@@ -147,7 +147,7 @@ async function runDownload(organization: string): Promise<void> {
 
         console.log(`State changed to ${state}!\n`)
 
-        // Function for downloading archive from GitHub S3 environment
+        // Function for downloading archive from Azure environment
         // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
         async function downloadArchive(
             organization: string,
@@ -221,10 +221,12 @@ async function runDownload(organization: string): Promise<void> {
         // Function for uploading archive to Azure Storage
         async function uploadArchive(filename: string): Promise<unknown> {
             try {
-                console.log('Uploading archive to Azure Storage...\n')
+                console.log(
+                    `Uploading archive to Azure Storage (${containerName})...\n`
+                )
                 const fileStream = createReadStream(filename)
 
-                // Get a reference to a blob
+                // Get a block blob client
                 const containerClient =
                     blobServiceClient.getContainerClient(containerName)
                 const blockBlobClient =
@@ -235,7 +237,7 @@ async function runDownload(organization: string): Promise<void> {
                     fileStream
                 )
                 console.log(
-                    `Upload block blob ${filename} successfully`,
+                    `Uploaded block blob ${filename} successfully`,
                     uploadBlobResponse.requestId
                 )
 

@@ -17,6 +17,10 @@ inputs:
   azure-connection-string:
     description: 'The Connection String (including key) needed to complete authentication to Azure'
     required: true
+  download-migration:
+    description: 'Download the migration archive from GitHub'
+    required: false
+    default: 'false'
 runs:
   using: 'node20'
   main: 'dist/index.js'
