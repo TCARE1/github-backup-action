@@ -71621,7 +71621,7 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
 // src/main.ts
 var main_exports = {};
 __export(main_exports, {
-  getRepoNames: () => getRepoNames
+  getOrgRepoNames: () => getOrgRepoNames
 });
 module.exports = __toCommonJS(main_exports);
 
@@ -74640,10 +74640,13 @@ var octokit = new import_core.Octokit({
 var containerName = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-container-name", { required: true }) : process.env.AZURE_CONTAINER_NAME;
 var connectionString = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-connection-string", { required: true }) : process.env.AZURE_CONNECTION_STRING;
 var blobServiceClient = import_storage_blob.BlobServiceClient.fromConnectionString(connectionString);
-var downloadMigration = (0, import_core2.getInput)("download-migration", { required: false }) || process.env.DOWNLOAD_MIGRATION === "true";
-async function getRepoNames(organization) {
+var transferMigration = (0, import_core2.getInput)("transfer-migration", { required: false }) || process.env.TRANSFER_MIGRATION === "true";
+var purgeMigration = (0, import_core2.getInput)("purge-migration", { required: false }) || process.env.PURGE_MIGRATION === "true";
+async function getOrgRepoNames(organization) {
   try {
-    console.log("\nGet list of repositories...\n");
+    console.log(`
+Get list of repositories for ${organization} org...
+`);
     let repoNames = [];
     let fetchMore = true;
     let page = 1;
@@ -74662,19 +74665,19 @@ async function getRepoNames(organization) {
     return repoNames;
   } catch (error) {
     console.error(
-      "Error occurred while retrieving list of repositories:",
+      `Error occurred while retrieving list of repositories for ${organization} org:`,
       error
     );
     throw error;
   }
 }
-async function runMigration(organization) {
+async function runGitHubMigration(organization) {
   try {
-    const repoNames = await getRepoNames(organization);
+    const repoNames = await getOrgRepoNames(organization);
     console.log(repoNames);
     console.log(
       `
-Starting backup for ${repoNames.length} repositories...
+Starting backup for ${repoNames.length} repositories in ${organization}}...
 `
     );
     const migration = await octokit.request("POST /orgs/{org}/migrations", {
@@ -74693,8 +74696,8 @@ The current migration id is ${migration.data.id} and the state is currently on $
     console.error("Error occurred during the migration:", error);
   }
 }
-async function runDownload(organization) {
-  async function retrieveMigrationData() {
+async function runBackupToStorage(organization) {
+  async function retrieveMigrationDataFromGitHub() {
     try {
       const fileContents = (0, import_fs.readFileSync)(
         "migration_response.json",
@@ -74708,8 +74711,103 @@ async function runDownload(organization) {
       throw error;
     }
   }
+  async function uploadArchiveToAzure(filename) {
+    try {
+      console.log(
+        `Uploading archive to Azure Storage (${containerName})...
+`
+      );
+      const fileStream = (0, import_fs.createReadStream)(filename);
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(filename);
+      const uploadBlobResponse = await blockBlobClient.uploadStream(
+        fileStream
+      );
+      console.log(
+        `Uploaded block blob ${filename} successfully`,
+        uploadBlobResponse.requestId
+      );
+      return uploadBlobResponse;
+    } catch (error) {
+      console.error("Error occurred while uploading the file:", error);
+    }
+  }
+  async function deleteArchiveFromGitHub(organization2, migrationId) {
+    try {
+      console.log(
+        "Deleting organization migration archive from GitHub...\n"
+      );
+      await octokit.request(
+        "DELETE /orgs/{org}/migrations/{migration_id}/archive",
+        {
+          org: organization2,
+          migration_id: migrationId
+        }
+      );
+    } catch (error) {
+      console.error("Error occurred while deleting the archive:", error);
+    }
+  }
+  async function transferArchive(organization2, migration, url2) {
+    const maxRetries = 3;
+    const timeoutDuration = 3e4;
+    for (let retryCount = 1; retryCount <= maxRetries; retryCount++) {
+      try {
+        console.log(
+          `Requesting download of archive with migration_id: ${migration}...
+`
+        );
+        const archiveUrl = `${url2}/archive`;
+        const archiveResponse = await axios_default.get(archiveUrl, {
+          responseType: "stream",
+          headers: {
+            Authorization: `token ${process.env.GH_API_KEY}`
+          }
+        });
+        console.log("Creating filename...\n");
+        const filename = `gh_org_archive_${organization2}_${(/* @__PURE__ */ new Date()).toJSON().slice(0, 10)}.tar.gz`;
+        console.log(`Starting download to ${filename}...
+`);
+        const writeStream = (0, import_fs.createWriteStream)(filename);
+        console.log("Downloading GitHub archive file...\n");
+        archiveResponse.data.pipe(writeStream);
+        return new Promise((resolve, reject) => {
+          writeStream.on("finish", () => {
+            console.log("GitHub Migration download completed!\n");
+            uploadArchiveToAzure(filename);
+            if (purgeMigration) {
+              console.log(
+                `Purging Github Migration ${migration} from ${organization2} org...
+`
+              );
+              deleteArchiveFromGitHub(organization2, migration);
+            }
+            console.log("Azure Backup completed! Goodbye.\n");
+            resolve();
+          });
+          writeStream.on("error", (err) => {
+            console.log(
+              "Error while uploading migration to Azure:",
+              err.message
+            );
+            reject(err);
+          });
+        });
+      } catch (error) {
+        console.error(
+          `Error occurred during attempt ${retryCount}:`,
+          error
+        );
+        if (retryCount === maxRetries) {
+          throw error;
+        }
+        console.log("Retrying in 30 seconds...\n");
+        await sleep(timeoutDuration);
+      }
+    }
+  }
   try {
-    const migration = await retrieveMigrationData();
+    const migration = await retrieveMigrationDataFromGitHub();
     let state = migration.state;
     while (state !== "exported") {
       const check = await octokit.request(
@@ -74726,98 +74824,7 @@ async function runDownload(organization) {
     }
     console.log(`State changed to ${state}!
 `);
-    async function downloadArchive(organization2, migration2, url2) {
-      const maxRetries = 3;
-      const timeoutDuration = 3e4;
-      for (let retryCount = 1; retryCount <= maxRetries; retryCount++) {
-        try {
-          console.log(
-            `Requesting download of archive with migration_id: ${migration2}...
-`
-          );
-          const archiveUrl = `${url2}/archive`;
-          const archiveResponse = await axios_default.get(archiveUrl, {
-            responseType: "stream",
-            headers: {
-              Authorization: `token ${process.env.GH_API_KEY}`
-            }
-          });
-          console.log("Creating filename...\n");
-          const filename = `gh_org_archive_${organization2}_${(/* @__PURE__ */ new Date()).toJSON().slice(0, 10)}.tar.gz`;
-          console.log("Starting download...\n");
-          const writeStream = (0, import_fs.createWriteStream)(filename);
-          console.log("Downloading archive file...\n");
-          archiveResponse.data.pipe(writeStream);
-          return new Promise((resolve, reject) => {
-            writeStream.on("finish", () => {
-              console.log("Download completed!\n");
-              uploadArchive(filename);
-              deleteArchive(organization2, migration2);
-              console.log("Backup completed! Goodbye.\n");
-              resolve();
-            });
-            writeStream.on("error", (err) => {
-              console.log(
-                "Error while downloading file:",
-                err.message
-              );
-              reject(err);
-            });
-          });
-        } catch (error) {
-          console.error(
-            `Error occurred during attempt ${retryCount}:`,
-            error
-          );
-          if (retryCount === maxRetries) {
-            throw error;
-          }
-          console.log("Retrying in 30 seconds...\n");
-          await sleep(timeoutDuration);
-        }
-      }
-    }
-    async function uploadArchive(filename) {
-      try {
-        console.log(
-          `Uploading archive to Azure Storage (${containerName})...
-`
-        );
-        const fileStream = (0, import_fs.createReadStream)(filename);
-        const containerClient = blobServiceClient.getContainerClient(containerName);
-        const blockBlobClient = containerClient.getBlockBlobClient(filename);
-        const uploadBlobResponse = await blockBlobClient.uploadStream(
-          fileStream
-        );
-        console.log(
-          `Uploaded block blob ${filename} successfully`,
-          uploadBlobResponse.requestId
-        );
-        return uploadBlobResponse;
-      } catch (error) {
-        console.error("Error occurred while uploading the file:", error);
-      }
-    }
-    async function deleteArchive(organization2, migrationId) {
-      try {
-        console.log(
-          "Deleting organization migration archive from GitHub...\n"
-        );
-        await octokit.request(
-          "DELETE /orgs/{org}/migrations/{migration_id}/archive",
-          {
-            org: organization2,
-            migration_id: migrationId
-          }
-        );
-      } catch (error) {
-        console.error(
-          "Error occurred while deleting the archive:",
-          error
-        );
-      }
-    }
-    downloadArchive(organization, migration.id, migration.url);
+    transferArchive(organization, migration.id, migration.url);
   } catch (error) {
     console.error("Error occurred during download:", error);
   }
@@ -74825,14 +74832,13 @@ async function runDownload(organization) {
 if (!process.env.GITHUB_ACTIONS) {
   checkEnv();
 }
-if (!downloadMigration) {
-  runMigration(githubOrganization);
-} else {
-  runDownload(githubOrganization);
+runGitHubMigration(githubOrganization);
+if (transferMigration) {
+  runBackupToStorage(githubOrganization);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  getRepoNames
+  getOrgRepoNames
 });
 /*! Bundled license information:
 

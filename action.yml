@@ -17,8 +17,12 @@ inputs:
   azure-connection-string:
     description: 'The Connection String (including key) needed to complete authentication to Azure'
     required: true
-  download-migration:
-    description: 'Download the migration archive from GitHub'
+  transfer-migration:
+    description: 'Transfer the migration archive from GitHub to Azure Storage'
+    required: false
+    default: 'false'
+  purge-migration:
+    description: 'Purge the migration archive from GitHub org'
     required: false
     default: 'false'
 runs:

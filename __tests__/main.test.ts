@@ -1,4 +1,4 @@
-import {getRepoNames} from '../src/main'
+import {getOrgRepoNames} from '../src/main'
 
 describe('getRepoNames', () => {
     const env = process.env
@@ -23,7 +23,7 @@ describe('getRepoNames', () => {
 
         const organization = 'testOrg'
 
-        const repoNames = await getRepoNames(organization)
+        const repoNames = await getOrgRepoNames(organization)
 
         expect(repoNames).toEqual(['testorg/publicrepo', 'testorg/publicrepo2'])
     })
@@ -39,7 +39,7 @@ describe('getRepoNames', () => {
 
         const organization = 'testOrgthatdoesnotexist'
 
-        await expect(getRepoNames(organization)).rejects.toThrowError(
+        await expect(getOrgRepoNames(organization)).rejects.toThrowError(
             'Not Found'
         )
     })

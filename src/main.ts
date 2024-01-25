@@ -35,13 +35,16 @@ const blobServiceClient =
     BlobServiceClient.fromConnectionString(connectionString)
 
 // All the script variables
-const downloadMigration =
-    getInput('download-migration', {required: false}) ||
-    process.env.DOWNLOAD_MIGRATION === 'true'
+const transferMigration =
+    getInput('transfer-migration', {required: false}) ||
+    process.env.TRANSFER_MIGRATION === 'true'
+const purgeMigration =
+    getInput('purge-migration', {required: false}) ||
+    process.env.PURGE_MIGRATION === 'true'
 
-export async function getRepoNames(organization: string): Promise<string[]> {
+export async function getOrgRepoNames(organization: string): Promise<string[]> {
     try {
-        console.log('\nGet list of repositories...\n')
+        console.log(`\nGet list of repositories for ${organization} org...\n`)
 
         let repoNames: string[] = []
         let fetchMore = true
@@ -63,7 +66,7 @@ export async function getRepoNames(organization: string): Promise<string[]> {
         return repoNames
     } catch (error) {
         console.error(
-            'Error occurred while retrieving list of repositories:',
+            `Error occurred while retrieving list of repositories for ${organization} org:`,
             error
         )
         throw error
@@ -71,15 +74,15 @@ export async function getRepoNames(organization: string): Promise<string[]> {
 }
 
 // Function for running the migration
-async function runMigration(organization: string): Promise<void> {
+async function runGitHubMigration(organization: string): Promise<void> {
     try {
         // Fetch repo names asynchronously
-        const repoNames = await getRepoNames(organization)
+        const repoNames = await getOrgRepoNames(organization)
 
         console.log(repoNames)
 
         console.log(
-            `\nStarting backup for ${repoNames.length} repositories...\n`
+            `\nStarting backup for ${repoNames.length} repositories in ${organization}}...\n`
         )
         // Start the migration on GitHub
         const migration = await octokit.request('POST /orgs/{org}/migrations', {
@@ -100,10 +103,10 @@ async function runMigration(organization: string): Promise<void> {
 }
 
 // Function for downloading the migration
-async function runDownload(organization: string): Promise<void> {
+async function runBackupToStorage(organization: string): Promise<void> {
     // Function for retrieving data from the stored file that the runMigration function created
     // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    async function retrieveMigrationData() {
+    async function retrieveMigrationDataFromGitHub() {
         try {
             // Read the contents of the file
             const fileContents = readFileSync(
@@ -124,9 +127,134 @@ async function runDownload(organization: string): Promise<void> {
         }
     }
 
+    // Function for uploading archive to Azure Storage
+    async function uploadArchiveToAzure(filename: string): Promise<unknown> {
+        try {
+            console.log(
+                `Uploading archive to Azure Storage (${containerName})...\n`
+            )
+            const fileStream = createReadStream(filename)
+
+            // Get a block blob client
+            const containerClient =
+                blobServiceClient.getContainerClient(containerName)
+            const blockBlobClient = containerClient.getBlockBlobClient(filename)
+
+            // Upload data to the blob
+            const uploadBlobResponse = await blockBlobClient.uploadStream(
+                fileStream
+            )
+            console.log(
+                `Uploaded block blob ${filename} successfully`,
+                uploadBlobResponse.requestId
+            )
+
+            return uploadBlobResponse
+        } catch (error) {
+            console.error('Error occurred while uploading the file:', error)
+        }
+    }
+
+    // Function for deleting archive from Github
+    async function deleteArchiveFromGitHub(
+        organization: string,
+        migrationId: number
+    ): Promise<void> {
+        try {
+            console.log(
+                'Deleting organization migration archive from GitHub...\n'
+            )
+            await octokit.request(
+                'DELETE /orgs/{org}/migrations/{migration_id}/archive',
+                {
+                    org: organization,
+                    migration_id: migrationId
+                }
+            )
+        } catch (error) {
+            console.error('Error occurred while deleting the archive:', error)
+        }
+    }
+
+    // Function for transferring migration archive from Github to Azure Storage
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    async function transferArchive(
+        organization: string,
+        migration: number,
+        url: string
+    ) {
+        const maxRetries = 3
+        const timeoutDuration = 30000 // 30 seconds
+        for (let retryCount = 1; retryCount <= maxRetries; retryCount++) {
+            try {
+                console.log(
+                    `Requesting download of archive with migration_id: ${migration}...\n`
+                )
+
+                const archiveUrl = `${url}/archive`
+
+                const archiveResponse = await axios.get(archiveUrl, {
+                    responseType: 'stream',
+                    headers: {
+                        Authorization: `token ${process.env.GH_API_KEY}`
+                    }
+                })
+
+                console.log('Creating filename...\n')
+                // Create a name for the file which has the current date attached to it
+                const filename = `gh_org_archive_${organization}_${new Date()
+                    .toJSON()
+                    .slice(0, 10)}.tar.gz`
+
+                console.log(`Starting download to ${filename}...\n`)
+                const writeStream = createWriteStream(filename)
+                console.log('Downloading GitHub archive file...\n')
+                archiveResponse.data.pipe(writeStream)
+
+                return new Promise<void>((resolve, reject) => {
+                    writeStream.on('finish', () => {
+                        console.log('GitHub Migration download completed!\n')
+                        // Upload archive to our own Azure Storage
+                        uploadArchiveToAzure(filename)
+                        // Deletes the migration archive. Migration archives are otherwise automatically deleted after seven days.
+                        if (purgeMigration) {
+                            console.log(
+                                `Purging Github Migration ${migration} from ${organization} org...\n`
+                            )
+                            deleteArchiveFromGitHub(organization, migration)
+                        }
+                        console.log('Azure Backup completed! Goodbye.\n')
+                        resolve()
+                    })
+
+                    writeStream.on('error', err => {
+                        console.log(
+                            'Error while uploading migration to Azure:',
+                            err.message
+                        )
+                        reject(err)
+                    })
+                })
+            } catch (error) {
+                // Handle the API call error here
+                console.error(
+                    `Error occurred during attempt ${retryCount}:`,
+                    error
+                )
+                // If it's the last retry, throw the error to be caught outside the loop
+                if (retryCount === maxRetries) {
+                    throw error
+                }
+                // If it's not the last retry, wait for the timeout before retrying
+                console.log('Retrying in 30 seconds...\n')
+                await sleep(timeoutDuration)
+            }
+        }
+    }
+
     try {
         // Retrieve the migration data from the file
-        const migration = await retrieveMigrationData()
+        const migration = await retrieveMigrationDataFromGitHub()
 
         // Need a migration status when entering the while loop for the first time
         let state = migration.state
@@ -147,132 +275,8 @@ async function runDownload(organization: string): Promise<void> {
 
         console.log(`State changed to ${state}!\n`)
 
-        // Function for downloading archive from Azure environment
-        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-        async function downloadArchive(
-            organization: string,
-            migration: number,
-            url: string
-        ) {
-            const maxRetries = 3
-            const timeoutDuration = 30000 // 30 seconds
-            for (let retryCount = 1; retryCount <= maxRetries; retryCount++) {
-                try {
-                    console.log(
-                        `Requesting download of archive with migration_id: ${migration}...\n`
-                    )
-
-                    const archiveUrl = `${url}/archive`
-
-                    const archiveResponse = await axios.get(archiveUrl, {
-                        responseType: 'stream',
-                        headers: {
-                            Authorization: `token ${process.env.GH_API_KEY}`
-                        }
-                    })
-
-                    console.log('Creating filename...\n')
-                    // Create a name for the file which has the current date attached to it
-                    const filename = `gh_org_archive_${organization}_${new Date()
-                        .toJSON()
-                        .slice(0, 10)}.tar.gz`
-
-                    console.log('Starting download...\n')
-                    const writeStream = createWriteStream(filename)
-                    console.log('Downloading archive file...\n')
-                    archiveResponse.data.pipe(writeStream)
-
-                    return new Promise<void>((resolve, reject) => {
-                        writeStream.on('finish', () => {
-                            console.log('Download completed!\n')
-                            // Upload archive to our own S3 Bucket
-                            uploadArchive(filename)
-                            // Deletes the migration archive. Migration archives are otherwise automatically deleted after seven days.
-                            deleteArchive(organization, migration)
-                            console.log('Backup completed! Goodbye.\n')
-                            resolve()
-                        })
-
-                        writeStream.on('error', err => {
-                            console.log(
-                                'Error while downloading file:',
-                                err.message
-                            )
-                            reject(err)
-                        })
-                    })
-                } catch (error) {
-                    // Handle the API call error here
-                    console.error(
-                        `Error occurred during attempt ${retryCount}:`,
-                        error
-                    )
-                    // If it's the last retry, throw the error to be caught outside the loop
-                    if (retryCount === maxRetries) {
-                        throw error
-                    }
-                    // If it's not the last retry, wait for the timeout before retrying
-                    console.log('Retrying in 30 seconds...\n')
-                    await sleep(timeoutDuration)
-                }
-            }
-        }
-
-        // Function for uploading archive to Azure Storage
-        async function uploadArchive(filename: string): Promise<unknown> {
-            try {
-                console.log(
-                    `Uploading archive to Azure Storage (${containerName})...\n`
-                )
-                const fileStream = createReadStream(filename)
-
-                // Get a block blob client
-                const containerClient =
-                    blobServiceClient.getContainerClient(containerName)
-                const blockBlobClient =
-                    containerClient.getBlockBlobClient(filename)
-
-                // Upload data to the blob
-                const uploadBlobResponse = await blockBlobClient.uploadStream(
-                    fileStream
-                )
-                console.log(
-                    `Uploaded block blob ${filename} successfully`,
-                    uploadBlobResponse.requestId
-                )
-
-                return uploadBlobResponse
-            } catch (error) {
-                console.error('Error occurred while uploading the file:', error)
-            }
-        }
-
-        // Function for deleting archive from Github
-        async function deleteArchive(
-            organization: string,
-            migrationId: number
-        ): Promise<void> {
-            try {
-                console.log(
-                    'Deleting organization migration archive from GitHub...\n'
-                )
-                await octokit.request(
-                    'DELETE /orgs/{org}/migrations/{migration_id}/archive',
-                    {
-                        org: organization,
-                        migration_id: migrationId
-                    }
-                )
-            } catch (error) {
-                console.error(
-                    'Error occurred while deleting the archive:',
-                    error
-                )
-            }
-        }
-
         // Download archive from Github and upload it to our own S3 bucket
-        downloadArchive(organization, migration.id, migration.url)
+        transferArchive(organization, migration.id, migration.url)
     } catch (error) {
         console.error('Error occurred during download:', error)
     }
@@ -283,10 +287,8 @@ if (!process.env.GITHUB_ACTIONS) {
     checkEnv()
 }
 
-if (!downloadMigration) {
-    // Start the backup script when downloadMigration is false
-    runMigration(githubOrganization)
-} else {
-    // Start the download script when downloadMigration is true
-    runDownload(githubOrganization)
+runGitHubMigration(githubOrganization)
+if (transferMigration) {
+    // Start the download script when transferMigration is true
+    runBackupToStorage(githubOrganization)
 }
