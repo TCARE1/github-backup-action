@@ -74635,7 +74635,7 @@ var import_fs = require("fs");
 var import_core2 = __toESM(require_core());
 var githubOrganization = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("github-organization", { required: true }) : process.env.GH_ORG;
 var octokit = new import_core.Octokit({
-  auth: process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("github-api-key") : process.env.GH_API_KEY
+  auth: process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("github-apikey") : process.env.GH_API_KEY
 });
 var containerName = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-container-name", { required: true }) : process.env.AZURE_CONTAINER_NAME;
 var connectionString = process.env.GITHUB_ACTIONS ? (0, import_core2.getInput)("azure-connection-string", { required: true }) : process.env.AZURE_CONNECTION_STRING;

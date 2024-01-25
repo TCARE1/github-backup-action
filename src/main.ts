@@ -19,7 +19,7 @@ const githubOrganization: string = process.env.GITHUB_ACTIONS
     : (process.env.GH_ORG as string)
 const octokit = new Octokit({
     auth: process.env.GITHUB_ACTIONS
-        ? getInput('github-api-key')
+        ? getInput('github-apikey')
         : (process.env.GH_API_KEY as string)
 })
 
