@@ -2,7 +2,7 @@
 import {checkEnv} from '../src/check'
 import {sleep} from '../src/sleep'
 import {Octokit} from '@octokit/core'
-import { BlobServiceClient } from '@azure/storage-blob';
+import {BlobServiceClient} from '@azure/storage-blob'
 import axios from 'axios'
 import 'dotenv/config'
 import {
@@ -25,18 +25,19 @@ const octokit = new Octokit({
             : (process.env.GH_API_KEY as string)
 })
 
-
 // All the Azure variables
-const connectionString: string =
-    process.env.GITHUB_ACTIONS && !process.env.CI
-        ? getInput('azure-connection-string', {required: true})
-        : (process.env.AZURE_CONNECTION_STRING as string)
 const containerName: string =
     process.env.GITHUB_ACTIONS && !process.env.CI
         ? getInput('azure-container-name', {required: true})
         : (process.env.AZURE_CONTAINER_NAME as string)
-const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+const connectionString: string =
+    process.env.GITHUB_ACTIONS && !process.env.CI
+        ? getInput('azure-connection-string', {required: true})
+        : (process.env.AZURE_CONNECTION_STRING as string)
+const blobServiceClient =
+    BlobServiceClient.fromConnectionString(connectionString)
 
+console.log('containerName = ${containerName}')
 
 // All the script variables
 const downloadMigration =
@@ -229,19 +230,25 @@ async function runDownload(organization: string): Promise<void> {
                 const fileStream = createReadStream(filename)
 
                 // Get a reference to a blob
-                const containerClient = blobServiceClient.getContainerClient(containerName);
-                const blockBlobClient = containerClient.getBlockBlobClient(filename);
+                const containerClient =
+                    blobServiceClient.getContainerClient(containerName)
+                const blockBlobClient =
+                    containerClient.getBlockBlobClient(filename)
 
                 // Upload data to the blob
-                const uploadBlobResponse = await blockBlobClient.uploadStream(fileStream);
-                console.log(`Upload block blob ${filename} successfully`, uploadBlobResponse.requestId);
+                const uploadBlobResponse = await blockBlobClient.uploadStream(
+                    fileStream
+                )
+                console.log(
+                    `Upload block blob ${filename} successfully`,
+                    uploadBlobResponse.requestId
+                )
 
-                return uploadBlobResponse;
+                return uploadBlobResponse
             } catch (error) {
                 console.error('Error occurred while uploading the file:', error)
             }
         }
-
 
         // Function for deleting archive from Github
         async function deleteArchive(

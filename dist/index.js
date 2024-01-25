@@ -74718,9 +74718,10 @@ var githubOrganization = process.env.GITHUB_ACTIONS && !process.env.CI ? (0, imp
 var octokit = new import_core.Octokit({
   auth: process.env.GITHUB_ACTIONS && !process.env.CI ? (0, import_core2.getInput)("github-api-key") : process.env.GH_API_KEY
 });
-var connectionString = process.env.GITHUB_ACTIONS && !process.env.CI ? (0, import_core2.getInput)("azure-connection-string", { required: false }) : process.env.AZURE_CONNECTION_STRING;
 var containerName = process.env.GITHUB_ACTIONS && !process.env.CI ? (0, import_core2.getInput)("azure-container-name", { required: true }) : process.env.AZURE_CONTAINER_NAME;
+var connectionString = process.env.GITHUB_ACTIONS && !process.env.CI ? (0, import_core2.getInput)("azure-connection-string", { required: true }) : process.env.AZURE_CONNECTION_STRING;
 var blobServiceClient = import_storage_blob.BlobServiceClient.fromConnectionString(connectionString);
+console.log("containerName = ${containerName}");
 var downloadMigration = (0, import_core2.getInput)("download-migration", { required: false }) || process.env.DOWNLOAD_MIGRATION === "true";
 async function getRepoNames(organization) {
   try {
@@ -74864,8 +74865,13 @@ async function runDownload(organization) {
         const fileStream = (0, import_fs.createReadStream)(filename);
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const blockBlobClient = containerClient.getBlockBlobClient(filename);
-        const uploadBlobResponse = await blockBlobClient.uploadStream(fileStream);
-        console.log(`Upload block blob ${filename} successfully`, uploadBlobResponse.requestId);
+        const uploadBlobResponse = await blockBlobClient.uploadStream(
+          fileStream
+        );
+        console.log(
+          `Upload block blob ${filename} successfully`,
+          uploadBlobResponse.requestId
+        );
         return uploadBlobResponse;
       } catch (error) {
         console.error("Error occurred while uploading the file:", error);

@@ -15,7 +15,7 @@ describe('getRepoNames', () => {
             CI: 'true',
             GH_ORG: 'myorg',
             GH_API_KEY: 'apikey',
-            AZURE_CONTAINER_NAME: 'containername',
+            AZURE_CONTAINER_NAME: 'someContainerName',
             AZURE_CONNECTION_STRING: 'azure-connection-string'
         }
 
@@ -31,7 +31,7 @@ describe('getRepoNames', () => {
             CI: 'true',
             GH_ORG: 'myorg',
             GH_API_KEY: 'apikey',
-            AZURE_CONTAINER_NAME: 'containername',
+            AZURE_CONTAINER_NAME: 'someContainerName',
             AZURE_CONNECTION_STRING: 'azure-connection-string'
         }
 
@@ -41,4 +41,5 @@ describe('getRepoNames', () => {
             'Not Found'
         )
     })
+
 })
