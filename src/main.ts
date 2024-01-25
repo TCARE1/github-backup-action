@@ -34,10 +34,9 @@ const connectionString: string =
     process.env.GITHUB_ACTIONS && !process.env.CI
         ? getInput('azure-connection-string', {required: true})
         : (process.env.AZURE_CONNECTION_STRING as string)
+
 const blobServiceClient =
     BlobServiceClient.fromConnectionString(connectionString)
-
-console.log('containerName = ${containerName}')
 
 // All the script variables
 const downloadMigration =

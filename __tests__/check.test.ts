@@ -3,14 +3,15 @@ import {expect} from '@jest/globals'
 import {checkEnv} from '../src/check' // Update this with the correct path to your module
 
 describe('checkEnv', () => {
-    let originalEnv: NodeJS.ProcessEnv
+    const env = process.env
 
-    beforeAll(() => {
-        originalEnv = process.env
+    beforeEach(() => {
+        jest.resetModules()
+        process.env = {}
     })
 
     afterEach(() => {
-        process.env = originalEnv // Restore original process.env after each test
+        process.env = env // Restore original process.env after each test
     })
 
     it('throws an error when required variables are missing', () => {

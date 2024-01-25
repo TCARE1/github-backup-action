@@ -2,19 +2,19 @@ name: 'Github Migrations Backup'
 author: 'Skrepr'
 description: 'Backup a Github Org with one Action'
 inputs:
-  GH_ORG:
-    description: 'The GitHub org you want to make a backup for'
+  github-organization:
+    description: 'The GitHub org you want to backup'
     required: true
-  GH_APIKEY:
+  github-apikey:
     description: 'The API token necessary to talk to the GitHub API'
     required: true
   GH_REPO:
     description: 'The GitHub repo you want to backup'
-    required: true
-  AZURE_CONTAINER_NAME:
+    required: false
+  azure-container-name:
     description: 'The Azure Container in which the archive will be stored'
     required: true
-  AZURE_CONNECTION_STRING:
+  azure-connection-string:
     description: 'The Connection String (including key) needed to complete authentication to Azure'
     required: true
 runs:

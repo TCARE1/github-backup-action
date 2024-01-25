@@ -1,15 +1,17 @@
 import {getRepoNames} from '../src/main'
 
 describe('getRepoNames', () => {
-    let originalEnv: NodeJS.ProcessEnv
+    const env = process.env
 
-    beforeAll(() => {
-        originalEnv = process.env
+    beforeEach(() => {
+        jest.resetModules()
+        process.env = {}
     })
 
     afterEach(() => {
-        process.env = originalEnv // Restore original process.env after each test
+        process.env = env // Restore original process.env after each test
     })
+
     it('should fetch repository names for the given organization', async () => {
         process.env = {
             CI: 'true',
