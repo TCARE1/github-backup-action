@@ -20,7 +20,6 @@ inputs:
   transfer-migration:
     description: 'Transfer the migration archive from GitHub to Azure Storage'
     required: false
-    default: 'false'
   purge-migration:
     description: 'Purge the migration archive from GitHub org'
     required: false

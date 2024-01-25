@@ -287,10 +287,10 @@ if (!process.env.GITHUB_ACTIONS) {
     checkEnv()
 }
 
-if (!transferMigration) {
-    // Step 1. Create a migration in the organization.
-    runGitHubMigration(githubOrganization)
-} else {
+if (transferMigration) {
     // Step 2. Transfer the migration created in step 1.
     runBackupToStorage(githubOrganization)
+} else {
+    // Step 1. Create a migration in the organization.
+    runGitHubMigration(githubOrganization)
 }

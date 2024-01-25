@@ -74832,10 +74832,10 @@ async function runBackupToStorage(organization) {
 if (!process.env.GITHUB_ACTIONS) {
   checkEnv();
 }
-if (!transferMigration) {
-  runGitHubMigration(githubOrganization);
-} else {
+if (transferMigration) {
   runBackupToStorage(githubOrganization);
+} else {
+  runGitHubMigration(githubOrganization);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
