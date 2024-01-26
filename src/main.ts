@@ -17,10 +17,12 @@ import {getInput} from '@actions/core'
 const githubOrganization: string = process.env.GITHUB_ACTIONS
     ? getInput('github-organization', {required: true})
     : (process.env.GH_ORG as string)
+const gitHubToken =  process.env.GITHUB_ACTIONS
+    ? getInput('github-apikey')
+    : (process.env.GH_API_KEY as string)
+
 const octokit = new Octokit({
-    auth: process.env.GITHUB_ACTIONS
-        ? getInput('github-apikey')
-        : (process.env.GH_API_KEY as string)
+    auth: gitHubToken
 })
 
 // All the Azure variables
@@ -42,6 +44,11 @@ const purgeMigration = process.env.GITHUB_ACTIONS
     ? getInput('purge-migration', {required: false})?.toLowerCase?.() === 'true'
     : process.env.PURGE_MIGRATION === 'true'
 
+/**
+ *
+ * @param organization
+ * @returns a string array of ALL repos under the given organization.
+ */
 export async function getOrgRepoNames(organization: string): Promise<string[]> {
     try {
         console.log(`\nGet list of repositories for ${organization} org...\n`)
@@ -74,7 +81,7 @@ export async function getOrgRepoNames(organization: string): Promise<string[]> {
 }
 
 // Function for running the migration
-async function runGitHubMigration(organization: string): Promise<void> {
+async function runGitHubMigration(organization: string): Promise<string> {
     try {
         // Fetch repo names asynchronously
         const repoNames = await getOrgRepoNames(organization)
@@ -97,8 +104,11 @@ async function runGitHubMigration(organization: string): Promise<void> {
         console.log(
             `Migration started successfully!\n\nThe current migration id is ${migration.data.id} and the state is currently on ${migration.data.state}\n`
         )
+
+        return migration.data
     } catch (error) {
         console.error('Error occurred during the migration:', error)
+        throw error
     }
 }
 
@@ -196,7 +206,7 @@ async function runBackupToStorage(organization: string): Promise<void> {
                 const archiveResponse = await axios.get(archiveUrl, {
                     responseType: 'stream',
                     headers: {
-                        Authorization: `token ${process.env.GH_API_KEY}`
+                        Authorization: `token ${gitHubToken}`
                     }
                 })
 
