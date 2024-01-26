@@ -4,7 +4,7 @@
   "description": "Github action for backing up Github orgs with migrations",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild src/main.ts --platform=node --target=node20 --bundle --outfile=dist/index.js",
+    "build": "esbuild src/main.ts --platform=node --target=node20 --bundle --outfile=dist/index.js --keep-names",
     "watch": "esbuild src/main.ts --platform=node --target=node20 --bundle --outfile=dist/index.js --watch",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
@@ -30,7 +30,7 @@
     "@azure/storage-blob": "^12.17.0",
     "@octokit/core": "^5.1.0",
     "@types/node": "^20.11.16",
-    "axios": "^1.6.2",
+    "axios": "^1.6.7",
     "dotenv": "^16.0.2",
     "eslint-plugin-github": "^4.10.1",
     "fs": "^0.0.1-security",

@@ -154,6 +154,7 @@ async function runBackupToStorage(organization: string): Promise<void> {
             const uploadBlobResponse = await blockBlobClient.uploadStream(
                 fileStream
             )
+
             console.log(
                 `Uploaded block blob ${filename} successfully`,
                 uploadBlobResponse.requestId
